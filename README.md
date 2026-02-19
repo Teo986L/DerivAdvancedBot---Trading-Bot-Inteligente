@@ -1,0 +1,1 @@
+# DerivAdvancedBot---Trading-Bot-Inteligente
