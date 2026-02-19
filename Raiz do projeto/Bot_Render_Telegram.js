@@ -4765,6 +4765,65 @@ app.post('/api/analyze', async (req, res) => {
     }
 });
 
+// ========== NOVAS ROTAS ==========
+
+// Rota de health check (útil para monitoramento do Render)
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'online',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        deriv: derivClient.connected ? 'connected' : 'disconnected',
+        telegram: telegramBot ? 'active' : 'inactive'
+    });
+});
+
+// Rota para status da conexão Deriv
+app.get('/api/status', (req, res) => {
+    res.json({
+        connected: derivClient.connected,
+        authorized: derivClient.authorized,
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Rota para versão do bot
+app.get('/api/version', (req, res) => {
+    res.json({
+        version: '1.0.0',
+        name: 'Deriv Advanced Bot',
+        author: 'Trader_BOT',
+        features: ['Elliott Wave', 'Quasimodo', 'Multi-timeframe', 'MACD Estrutural'],
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Rota para estatísticas (opcional)
+app.get('/api/stats', (req, res) => {
+    res.json({
+        total_symbols: SYMBOLS.length,
+        candle_count: CANDLE_COUNT,
+        trading_mode: TRADING_MODE,
+        timeframes: Object.keys(TIMEFRAMES),
+        indicators: {
+            rsi_period: INDICATOR_CONFIG.RSI_PERIOD,
+            adx_period: INDICATOR_CONFIG.ADX_PERIOD,
+            macd_fast: INDICATOR_CONFIG.MACD_FAST,
+            macd_slow: INDICATOR_CONFIG.MACD_SLOW,
+            macd_signal: INDICATOR_CONFIG.MACD_SIGNAL
+        }
+    });
+});
+
+// Inicia o servidor
+app.listen(port, () => {
+    console.log(`\n🚀 Servidor rodando na porta ${port}`);
+    console.log(`📊 Painel web: http://localhost:${port}/`);
+    console.log(`📡 API disponível em http://localhost:${port}/api`);
+    console.log(`✅ Health check: http://localhost:${port}/health`);
+    console.log(`ℹ️  Versão: 1.0.0\n`);
+});
+
 // Inicia o servidor
 app.listen(port, () => {
     console.log(`Servidor rodando na porta ${port}`);
