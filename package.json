@@ -1,15 +1,34 @@
 {
-  "name": "bot-render-telegram",
+  "name": "deriv-advanced-bot",
   "version": "1.0.0",
+  "description": "Bot de trading para Deriv com análise multi-timeframe, Elliott Wave e Quasimodo",
   "main": "Bot_Render_Telegram.js",
   "scripts": {
-    "start": "node Bot_Render_Telegram.js"
+    "start": "node Bot_Render_Telegram.js",
+    "dev": "nodemon Bot_Render_Telegram.js"
   },
   "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "node-telegram-bot-api": "^0.64.0",
     "body-parser": "^1.20.2",
     "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "node-telegram-bot-api": "^0.64.0",
-    "ws": "^8.14.2"
-  }
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": [
+    "deriv",
+    "trading-bot",
+    "elliott-wave",
+    "quasimodo",
+    "technical-analysis",
+    "telegram-bot"
+  ],
+  "author": "Trader_BOT",
+  "license": "MIT"
 }
