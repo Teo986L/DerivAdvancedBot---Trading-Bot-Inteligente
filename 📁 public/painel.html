@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>DerivAdvancedBot - Terminal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        
+        body {
+            background-color: #000000;
+            color: #00ff00;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header estilo terminal */
+        .terminal-header {
+            border: 2px solid #00ff00;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            background: linear-gradient(0deg, #001100, #000000);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+        }
+        
+        .terminal-header h1 {
+            font-size: clamp(1.2rem, 5vw, 2rem);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            word-break: break-word;
+        }
+        
+        .terminal-header h1::before {
+            content: "╔══════════════════════════════════════════════════════════════╗\n";
+            white-space: pre;
+            display: block;
+            color: #00ff00;
+            font-size: 0.8rem;
+        }
+        
+        .terminal-header h1::after {
+            content: "╚══════════════════════════════════════════════════════════════╝";
+            white-space: pre;
+            display: block;
+            color: #00ff00;
+            font-size: 0.8rem;
+            margin-top: 10px;
+        }
+        
+        .subtitle {
+            color: #00aa00;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        
+        /* Grid principal */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        @media (min-width: 768px) {
+            .main-grid {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+        
+        /* Painel de controle */
+        .control-panel {
+            border: 1px solid #00ff00;
+            padding: 15px;
+            background-color: #001100;
+        }
+        
+        .panel-title {
+            border-bottom: 1px solid #00ff00;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #00aa00;
+            font-size: 0.9rem;
+        }
+        
+        select, button {
+            width: 100%;
+            padding: 12px;
+            background-color: #000000;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        
+        select option {
+            background-color: #000000;
+            color: #00ff00;
+        }
+        
+        select:hover, button:hover {
+            background-color: #003300;
+        }
+        
+        button:active {
+            background-color: #004400;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Info do ativo */
+        .asset-info {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px dashed #00aa00;
+            font-size: 0.9rem;
+        }
+        
+        .asset-info div {
+            margin-bottom: 5px;
+        }
+        
+        .blink {
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        /* Terminal output */
+        .terminal-output {
+            border: 1px solid #00ff00;
+            background-color: #000000;
+            min-height: 400px;
+            max-height: 600px;
+            overflow-y: auto;
+            padding: 15px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .terminal-output pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+        }
+        
+        .output-header {
+            border-bottom: 1px solid #00ff00;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #00ff00;
+            background-color: #001100;
+        }
+        
+        .status-item {
+            font-size: 0.85rem;
+        }
+        
+        .status-label {
+            color: #00aa00;
+        }
+        
+        .status-value {
+            color: #00ff00;
+            font-weight: bold;
+        }
+        
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            text-align: left;
+        }
+        
+        .loading::after {
+            content: "...";
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: "."; }
+            40% { content: ".."; }
+            60%, 100% { content: "..."; }
+        }
+        
+        /* Footer */
+        .terminal-footer {
+            margin-top: 20px;
+            padding: 10px;
+            border-top: 1px solid #00aa00;
+            font-size: 0.8rem;
+            text-align: center;
+            color: #00aa00;
+        }
+        
+        /* Scrollbar personalizada */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #001100;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #00ff00;
+            border: 1px solid #000000;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00aa00;
+        }
+        
+        /* Cursor piscante */
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 18px;
+            background-color: #00ff00;
+            margin-left: 2px;
+            animation: cursorBlink 1s infinite;
+        }
+        
+        @keyframes cursorBlink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        .command-line {
+            margin-top: 10px;
+            padding: 5px;
+            border-left: 2px solid #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="terminal-header">
+            <h1>DERIV ADVANCED BOT</h1>
+            <div class="subtitle">Multi-Timeframe | Elliott Wave | Quasimodo</div>
+            <div class="subtitle">v1.0.0 | Terminal Edition</div>
+        </div>
+        
+        <!-- Grid principal -->
+        <div class="main-grid">
+            <!-- Painel de controle -->
+            <div class="control-panel">
+                <div class="panel-title">$ CONTROLE</div>
+                
+                <div class="form-group">
+                    <label>> SELECIONE O ATIVO</label>
+                    <select id="symbolSelect">
+                        <option value="">Carregando símbolos...</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>> MODO DE ANÁLISE</label>
+                    <select id="modeSelect">
+                        <option value="complete">COMPLETA (todos timeframes)</option>
+                        <option value="quick">RÁPIDA (M5, M15, H1)</option>
+                        <option value="trend">APENAS TENDÊNCIA</option>
+                    </select>
+                </div>
+                
+                <button id="analyzeBtn" onclick="analyze()">▶ EXECUTAR ANÁLISE</button>
+                
+                <div class="asset-info">
+                    <div><span style="color:#00aa00">STATUS:</span> <span id="connectionStatus" class="status-value">✅ Conectado</span></div>
+                    <div><span style="color:#00aa00">SERVER:</span> <span id="serverTime">carregando...</span></div>
+                    <div><span style="color:#00aa00">ATIVOS:</span> <span id="totalSymbols">0</span></div>
+                </div>
+                
+                <div class="command-line">
+                    <div>$ help -- comandos disponíveis</div>
+                    <div style="margin-left: 15px; color: #00aa00;">/analyze [símbolo]</div>
+                    <div style="margin-left: 15px; color: #00aa00;">/quick [símbolo]</div>
+                    <div style="margin-left: 15px; color: #00aa00;">/trend [símbolo]</div>
+                    <div style="margin-left: 15px; color: #00aa00;">/price [símbolo]</div>
+                </div>
+            </div>
+            
+            <!-- Terminal output -->
+            <div class="terminal-output" id="terminal">
+                <div class="output-header">
+                    <span>$ TERMINAL OUTPUT</span>
+                    <span id="timestamp"></span>
+                </div>
+                <pre id="output">╔══════════════════════════════════════════════════════════════╗
+║  AGUARDANDO ANÁLISE...                                     ║
+║  Selecione um ativo e clique em EXECUTAR ANÁLISE           ║
+╚══════════════════════════════════════════════════════════════╝
+
+$ <span class="cursor"></span></pre>
+            </div>
+        </div>
+        
+        <!-- Status bar -->
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-label">M5:</span>
+                <span class="status-value" id="statusM5">---</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">M15:</span>
+                <span class="status-value" id="statusM15">---</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">M30:</span>
+                <span class="status-value" id="statusM30">---</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">H1:</span>
+                <span class="status-value" id="statusH1">---</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">H4:</span>
+                <span class="status-value" id="statusH4">---</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">H24:</span>
+                <span class="status-value" id="statusH24">---</span>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="terminal-footer">
+            <span>⚠️ AVISO LEGAL: Uso educacional. Não nos responsabilizamos por perdas financeiras.</span>
+            <br>
+            <span>📡 Conectado ao servidor: <span id="serverUrl"></span></span>
+        </div>
+    </div>
+    
+    <script>
+        // Configuração
+        const SERVER_URL = window.location.origin; // Detecta automaticamente
+        let symbols = [];
+        
+        // Elementos DOM
+        const terminal = document.getElementById('terminal');
+        const output = document.getElementById('output');
+        const symbolSelect = document.getElementById('symbolSelect');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const serverTime = document.getElementById('serverTime');
+        const totalSymbols = document.getElementById('totalSymbols');
+        const serverUrl = document.getElementById('serverUrl');
+        
+        serverUrl.textContent = SERVER_URL;
+        
+        // Atualizar timestamp
+        function updateTimestamp() {
+            document.getElementById('timestamp').textContent = new Date().toLocaleTimeString('pt-BR');
+        }
+        setInterval(updateTimestamp, 1000);
+        updateTimestamp();
+        
+        // Carregar símbolos
+        async function loadSymbols() {
+            try {
+                const response = await fetch(`${SERVER_URL}/api/symbols`);
+                symbols = await response.json();
+                
+                symbolSelect.innerHTML = '<option value="">SELECIONE UM ATIVO</option>';
+                symbols.forEach(s => {
+                    const option = document.createElement('option');
+                    option.value = s.symbol;
+                    option.textContent = `${s.symbol} - ${s.description}`;
+                    symbolSelect.appendChild(option);
+                });
+                
+                totalSymbols.textContent = symbols.length;
+                connectionStatus.textContent = '✅ Conectado';
+                connectionStatus.style.color = '#00ff00';
+                
+                addToTerminal('✅ Símbolos carregados: ' + symbols.length);
+            } catch (error) {
+                console.error('Erro ao carregar símbolos:', error);
+                connectionStatus.textContent = '❌ Erro de conexão';
+                connectionStatus.style.color = '#ff0000';
+                addToTerminal('❌ Erro ao conectar ao servidor: ' + error.message);
+            }
+        }
+        
+        // Adicionar texto ao terminal
+        function addToTerminal(text, isError = false) {
+            const lines = output.innerHTML.split('\n');
+            if (lines.length > 30) {
+                lines.shift();
+            }
+            
+            const timestamp = new Date().toLocaleTimeString('pt-BR');
+            const newLine = `[${timestamp}] ${text}`;
+            
+            output.innerHTML = lines.join('\n') + '\n' + newLine + '\n\n$ <span class="cursor"></span>';
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+        
+        // Analisar
+        async function analyze() {
+            const symbol = symbolSelect.value;
+            const mode = document.getElementById('modeSelect').value;
+            
+            if (!symbol) {
+                addToTerminal('⚠️ Selecione um ativo primeiro', true);
+                return;
+            }
+            
+            analyzeBtn.disabled = true;
+            analyzeBtn.textContent = '⏳ ANALISANDO...';
+            
+            addToTerminal(`🔍 Iniciando análise de ${symbol} (modo: ${mode})...`);
+            
+            try {
+                const response = await fetch(`${SERVER_URL}/api/analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ symbol })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Erro ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.erro) {
+                    addToTerminal(`❌ ${data.erro}`, true);
+                } else {
+                    displayAnalysis(data, symbol);
+                }
+                
+            } catch (error) {
+                addToTerminal(`❌ Erro na análise: ${error.message}`, true);
+                console.error(error);
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = '▶ EXECUTAR ANÁLISE';
+            }
+        }
+        
+        // Exibir análise
+        function displayAnalysis(data, symbol) {
+            addToTerminal(`✅ Análise concluída para ${symbol}`);
+            
+            // Criar output formatado
+            const emoji = data.sinalFinal === 'CALL' ? '🟢' : data.sinalFinal === 'PUT' ? '🔴' : '⚪';
+            
+            let outputText = `╔══════════════════════════════════════════════════════════════╗
+║                    RESULTADO DA ANÁLISE                      ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  ${emoji} SINAL: ${data.sinalFinal}${' '.repeat(20 - data.sinalFinal.length)}                ║
+║  📊 CONFIANÇA: ${data.probabilidade}% (${data.confianca})${' '.repeat(10)}║
+║  💰 PREÇO: ${data.precoAtual?.toFixed(2) || 'N/A'}${' '.repeat(20)}║
+║                                                              ║
+╠══════════════════════════════════════════════════════════════╣
+║  📈 TIMEFRAMES                                              ║
+`;
+            
+            // Adicionar timeframes
+            const tfs = ['M5', 'M15', 'M30', 'H1', 'H4', 'H24'];
+            tfs.forEach(tf => {
+                const a = data.analises?.[tf];
+                if (a) {
+                    const icone = a.sinal === 'CALL' ? '🟢' : a.sinal === 'PUT' ? '🔴' : '⚪';
+                    const direcao = a.macd?.trend === 'FORTE_ALTA' ? '🔥 FORTE ALTA' :
+                                   a.macd?.trend === 'ALTA' ? '📈 ALTA' :
+                                   a.macd?.trend === 'FORTE_BAIXA' ? '💥 FORTE BAIXA' :
+                                   a.macd?.trend === 'BAIXA' ? '📉 BAIXA' : '⚪ NEUTRO';
+                    outputText += `║     ${icone} ${tf}: ADX ${a.adx?.toFixed(1) || 'N/A'} | ${direcao}${' '.repeat(10)}║\n`;
+                } else {
+                    outputText += `║     ⚪ ${tf}: ---${' '.repeat(30)}║\n`;
+                }
+            });
+            
+            outputText += `║                                                              ║
+╠══════════════════════════════════════════════════════════════╣
+║  🎯 ESTRATÉGIA                                              ║
+║     Entrada: ${data.niveis?.entrada?.toFixed(2) || 'N/A'}${' '.repeat(25)}║
+║     Stop: ${data.niveis?.stopLoss || 'N/A'} (${data.sinalFinal === 'CALL' ? '-' : '+'}${(Math.abs(data.niveis?.stopLoss - data.precoAtual) / data.precoAtual * 100).toFixed(1)}%)${' '.repeat(5)}║
+║     Alvo 1: ${data.niveis?.alvos?.[0] || 'N/A'} (${data.sinalFinal === 'CALL' ? '+' : '-'}${(Math.abs(data.niveis?.alvos?.[0] - data.precoAtual) / data.precoAtual * 100).toFixed(1)}%)${' '.repeat(5)}║
+║     Alvo 2: ${data.niveis?.alvos?.[1] || 'N/A'} (${data.sinalFinal === 'CALL' ? '+' : '-'}${(Math.abs(data.niveis?.alvos?.[1] - data.precoAtual) / data.precoAtual * 100).toFixed(1)}%)${' '.repeat(5)}║
+║                                                              ║
+╠══════════════════════════════════════════════════════════════╣
+║  💡 AÇÃO: ${data.acao || 'N/A'}${' '.repeat(20)}║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+$ `;
+            
+            output.innerHTML = outputText + '<span class="cursor"></span>';
+            
+            // Atualizar status bar
+            document.getElementById('statusM5').textContent = data.analises?.M5?.sinal || '---';
+            document.getElementById('statusM15').textContent = data.analises?.M15?.sinal || '---';
+            document.getElementById('statusM30').textContent = data.analises?.M30?.sinal || '---';
+            document.getElementById('statusH1').textContent = data.analises?.H1?.sinal || '---';
+            document.getElementById('statusH4').textContent = data.analises?.H4?.sinal || '---';
+            document.getElementById('statusH24').textContent = data.analises?.H24?.sinal || '---';
+            
+            // Atualizar cores da status bar
+            ['M5', 'M15', 'M30', 'H1', 'H4', 'H24'].forEach(tf => {
+                const el = document.getElementById(`status${tf}`);
+                if (el.textContent === 'CALL') {
+                    el.style.color = '#00ff00';
+                } else if (el.textContent === 'PUT') {
+                    el.style.color = '#ff0000';
+                } else {
+                    el.style.color = '#ffff00';
+                }
+            });
+        }
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSymbols();
+            
+            // Simular digitação no terminal
+            const commands = [
+                '> Sistema inicializado',
+                '> Módulos carregados: Elliott Wave, Quasimodo, MACD Estrutural',
+                '> Aguardando seleção de ativo...'
+            ];
+            
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i < commands.length) {
+                    addToTerminal(commands[i]);
+                    i++;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 500);
+        });
+        
+        // Enter para analisar
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !analyzeBtn.disabled) {
+                analyze();
+            }
+        });
+    </script>
+</body>
+</html>
