@@ -4131,65 +4131,283 @@ class BotExecutionCore {
     }
 }
 
-// ========== FUNÇÃO PARA FORMATAR MENSAGENS DO TELEGRAM (CORRIGIDA) ==========
-function formatarParaTelegram(resultado, simbolo = 'DESCONHECIDO') {
-    const emoji = resultado.sinalFinal === 'CALL' ? '🟢' : resultado.sinalFinal === 'PUT' ? '🔴' : '⚪';
-    
-    // Determina o tipo de ativo usando a classe ConfigAtivo
-    const tipoAtivo = ConfigAtivo._detectarTipoAtivo(simbolo);
-    const tiposAtivo = {
-        'volatility_index': '📊 Volatility Index',
-        'commodity': '🪙 Commodity',
-        'indice_normal': '📈 Índice',
-        'criptomoeda': '₿ Criptomoeda'
-    };
-    const tipoFormatado = tiposAtivo[tipoAtivo] || '📊 Ativo';
-    
-    const timeframesPrincipais = ['M5', 'M15', 'M30', 'H1', 'H4', 'H24'].filter(tf => resultado.analises[tf]);
-    
-    let mensagem = `
-🤖 *ANÁLISE DE MERCADO*
-📅 ${new Date().toLocaleString('pt-BR')}
+// ========== INICIALIZAÇÃO DO BOT TELEGRAM COM COMANDOS ==========
+let telegramBot = null;
 
-${emoji} *SINAL:* ${resultado.sinalFinal}
-📊 *Confiança:* ${resultado.probabilidade}% (${resultado.confianca})
-💰 *Preço:* ${resultado.precoAtual?.toFixed(2) || 'N/A'}
-
-📌 *ATIVO:* ${simbolo} - ${tipoFormatado}
-
-📈 *TIMEFRAMES:*
-`;
-
-    timeframesPrincipais.forEach(tf => {
-        const a = resultado.analises[tf];
-        if (a) {
-            const icone = a.sinal === 'CALL' ? '🟢' : a.sinal === 'PUT' ? '🔴' : '⚪';
-            const direcao = a.macd.trend === 'FORTE_ALTA' ? '🔥 FORTE ALTA' :
-                           a.macd.trend === 'ALTA' ? '📈 ALTA' :
-                           a.macd.trend === 'FORTE_BAIXA' ? '💥 FORTE BAIXA' :
-                           a.macd.trend === 'BAIXA' ? '📉 BAIXA' : '⚪ NEUTRO';
-            mensagem += `   ${icone} ${tf}: ADX ${a.adx?.toFixed(1) || 'N/A'} | ${direcao}\n`;
-        }
-    });
-
-    mensagem += `
-🎯 *ESTRATÉGIA:*
-   Entrada: ${resultado.niveis?.entrada?.toFixed(2) || 'N/A'}
-   Stop: ${resultado.niveis?.stopLoss || 'N/A'} (${resultado.sinalFinal === 'CALL' ? '-' : '+'}${(Math.abs(resultado.niveis?.stopLoss - resultado.precoAtual) / resultado.precoAtual * 100).toFixed(1)}%)
-   Alvo 1: ${resultado.niveis?.alvos?.[0] || 'N/A'} (${resultado.sinalFinal === 'CALL' ? '+' : '-'}${(Math.abs(resultado.niveis?.alvos?.[0] - resultado.precoAtual) / resultado.precoAtual * 100).toFixed(1)}%)
-   Alvo 2: ${resultado.niveis?.alvos?.[1] || 'N/A'} (${resultado.sinalFinal === 'CALL' ? '+' : '-'}${(Math.abs(resultado.niveis?.alvos?.[1] - resultado.precoAtual) / resultado.precoAtual * 100).toFixed(1)}%)
-
-💡 *AÇÃO:* ${resultado.acao || 'N/A'}
-
-⚠️ *ALERTAS:* ${resultado.alertas?.length || 0}
-`;
-    if (resultado.alertas && resultado.alertas.length > 0) {
-        mensagem += `🔔 ${resultado.alertas[0]}\n`;
+if (process.env.TELEGRAM_TOKEN) {
+    try {
+        // Cria o bot com polling true para receber comandos
+        telegramBot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
+        
+        console.log('✅ Bot Telegram iniciado com polling');
+        
+        // ===== COMANDOS DO BOT =====
+        
+        // Comando /start
+        telegramBot.onText(/\/start/, (msg) => {
+            const welcome = `🤖 *Bem-vindo ao Deriv Advanced Bot!*\n\n` +
+                           `Comandos disponíveis:\n` +
+                           `• /analise [símbolo] - Análise completa\n` +
+                           `• /quick [símbolo] - Análise rápida (M5)\n` +
+                           `• /preco [símbolo] - Preço atual\n` +
+                           `• /ativos - Lista ativos disponíveis\n` +
+                           `• /config - Configurações atuais\n` +
+                           `• /help - Ajuda\n\n` +
+                           `Exemplo: /analise R_100`;
+            
+            telegramBot.sendMessage(msg.chat.id, welcome, { parse_mode: 'Markdown' });
+        });
+        
+        // Comando /help
+        telegramBot.onText(/\/help/, (msg) => {
+            const help = `📚 *AJUDA - Comandos Disponíveis*\n\n` +
+                        `*/analise [símbolo]*\n` +
+                        `Executa análise completa multi-timeframe\n` +
+                        `Ex: /analise R_100\n\n` +
+                        
+                        `*/quick [símbolo]*\n` +
+                        `Análise rápida apenas com M5\n` +
+                        `Ex: /quick R_100\n\n` +
+                        
+                        `*/preco [símbolo]*\n` +
+                        `Mostra preço atual do ativo\n` +
+                        `Ex: /preco R_100\n\n` +
+                        
+                        `*/ativos*\n` +
+                        `Lista os primeiros 20 ativos disponíveis\n\n` +
+                        
+                        `*/config*\n` +
+                        `Mostra configurações atuais do bot\n\n` +
+                        
+                        `*/status*\n` +
+                        `Status da conexão com a Deriv`;
+            
+            telegramBot.sendMessage(msg.chat.id, help, { parse_mode: 'Markdown' });
+        });
+        
+        // Comando /ativos
+        telegramBot.onText(/\/ativos/, (msg) => {
+            const lista = SYMBOLS.slice(0, 20).map(s => `• ${s.symbol} - ${s.description}`).join('\n');
+            telegramBot.sendMessage(
+                msg.chat.id, 
+                `📋 *Ativos Disponíveis (primeiros 20):*\n\n${lista}\n\n... e mais ${SYMBOLS.length - 20} ativos.`,
+                { parse_mode: 'Markdown' }
+            );
+        });
+        
+        // Comando /preco [símbolo]
+        telegramBot.onText(/\/preco (.+)/, async (msg, match) => {
+            const chatId = msg.chat.id;
+            const simbolo = match[1].toUpperCase().trim();
+            
+            const statusMsg = await telegramBot.sendMessage(chatId, `🔍 Buscando preço de ${simbolo}...`);
+            
+            try {
+                // Verifica se está conectado
+                if (!derivClient.connected) {
+                    await derivClient.connect();
+                }
+                
+                const dados = await derivClient.getCandles(simbolo, 60, 2); // 2 candles do timeframe 1min
+                const precoAtual = dados?.candles?.[dados.candles.length - 1]?.close || 'N/A';
+                
+                await telegramBot.editMessageText(
+                    `💰 *${simbolo}*\n\n` +
+                    `Preço: ${precoAtual}\n` +
+                    `Data: ${new Date().toLocaleString('pt-BR')}`,
+                    {
+                        chat_id: chatId,
+                        message_id: statusMsg.message_id,
+                        parse_mode: 'Markdown'
+                    }
+                );
+            } catch (error) {
+                await telegramBot.editMessageText(
+                    `❌ Erro ao buscar preço: ${error.message}`,
+                    {
+                        chat_id: chatId,
+                        message_id: statusMsg.message_id
+                    }
+                );
+            }
+        });
+        
+        // Comando /quick [símbolo] - Análise rápida
+        telegramBot.onText(/\/quick (.+)/, async (msg, match) => {
+            const chatId = msg.chat.id;
+            const simbolo = match[1].toUpperCase().trim();
+            
+            const statusMsg = await telegramBot.sendMessage(chatId, `⚡ Análise rápida de ${simbolo} em andamento...`);
+            
+            try {
+                // Conecta se necessário
+                if (!derivClient.connected) {
+                    await derivClient.connect();
+                }
+                
+                // Pega apenas candles M5 para análise rápida
+                const dados = await derivClient.getCandles(simbolo, TIMEFRAMES.M5, 100);
+                
+                if (!dados?.candles || dados.candles.length < 50) {
+                    throw new Error('Dados insuficientes');
+                }
+                
+                // Cria análise rápida
+                const analisador = new SistemaAnaliseInteligente(simbolo);
+                const resultado = await analisador.analisar(dados.candles);
+                
+                const emoji = resultado.sinal === 'CALL' ? '🟢' : resultado.sinal === 'PUT' ? '🔴' : '⚪';
+                const prob = (resultado.probabilidade * 100).toFixed(1);
+                
+                const msgRapida = `⚡ *ANÁLISE RÁPIDA - ${simbolo}*\n\n` +
+                                 `${emoji} *Sinal:* ${resultado.sinal}\n` +
+                                 `📊 *Probabilidade:* ${prob}%\n` +
+                                 `💰 *Preço:* ${resultado.preco_atual?.toFixed(4) || 'N/A'}\n` +
+                                 `📈 *RSI:* ${resultado.rsi?.toFixed(1)}\n` +
+                                 `📊 *ADX:* ${resultado.adx?.toFixed(1)}\n` +
+                                 `📉 *MACD:* ${resultado.macd_data?.histograma?.toFixed(4) || '0'}\n\n` +
+                                 `💡 *Estratégia:* ${resultado.regra_aplicada || 'N/A'}`;
+                
+                await telegramBot.editMessageText(
+                    msgRapida,
+                    {
+                        chat_id: chatId,
+                        message_id: statusMsg.message_id,
+                        parse_mode: 'Markdown'
+                    }
+                );
+            } catch (error) {
+                await telegramBot.editMessageText(
+                    `❌ Erro na análise rápida: ${error.message}`,
+                    {
+                        chat_id: chatId,
+                        message_id: statusMsg.message_id
+                    }
+                );
+            }
+        });
+        
+        // Comando /analise [símbolo] - Análise completa
+        telegramBot.onText(/\/analise (.+)/, async (msg, match) => {
+            const chatId = msg.chat.id;
+            const simbolo = match[1].toUpperCase().trim();
+            
+            const statusMsg = await telegramBot.sendMessage(chatId, `🔍 Análise completa de ${simbolo} em andamento... (isso pode levar alguns segundos)`);
+            
+            try {
+                // Conecta se necessário
+                if (!derivClient.connected) {
+                    await derivClient.connect();
+                }
+                
+                // Busca dados de todos os timeframes
+                const candlesByTF = await derivClient.getAllTimeframes(simbolo, CANDLE_COUNT);
+                
+                // Verifica erros
+                const errors = Object.entries(candlesByTF)
+                    .filter(([, value]) => value.error)
+                    .map(([tf, value]) => `${tf}: ${value.error}`);
+                    
+                if (errors.length > 0) {
+                    throw new Error(`Erros: ${errors.join(', ')}`);
+                }
+                
+                // Prepara dados para análise
+                const dadosAnalise = {};
+                const tfMapping = {
+                    'M5': '5m',
+                    'M15': '15m',
+                    'M30': '30m',
+                    'H1': '1h',
+                    'H4': '4h',
+                    'H24': '24h'
+                };
+                
+                for (const [tfOrig, candles] of Object.entries(candlesByTF)) {
+                    const tfDest = tfMapping[tfOrig];
+                    if (tfDest && candles && candles.length > 0) {
+                        dadosAnalise[tfDest] = {
+                            candles: candles,
+                            preco: candles[candles.length - 1]?.close || 0
+                        };
+                    }
+                }
+                
+                // Executa análise
+                const resultado = analisarMercado(dadosAnalise);
+                
+                // Formata mensagem
+                const mensagem = formatarParaTelegram(resultado, simbolo);
+                
+                await telegramBot.editMessageText(
+                    mensagem,
+                    {
+                        chat_id: chatId,
+                        message_id: statusMsg.message_id,
+                        parse_mode: 'Markdown'
+                    }
+                );
+                
+            } catch (error) {
+                await telegramBot.editMessageText(
+                    `❌ Erro na análise completa: ${error.message}`,
+                    {
+                        chat_id: chatId,
+                        message_id: statusMsg.message_id
+                    }
+                );
+            }
+        });
+        
+        // Comando /config
+        telegramBot.onText(/\/config/, (msg) => {
+            const config = `⚙️ *CONFIGURAÇÕES ATUAIS*\n\n` +
+                          `📊 *Trading Mode:* ${TRADING_MODE}\n` +
+                          `📈 *Comprar >:* ${PROB_BUY_THRESHOLD}\n` +
+                          `📉 *Vender <:* ${PROB_SELL_THRESHOLD}\n` +
+                          `✅ *Confirmações CALL:* ${MIN_CALL_CONFIRMATIONS}\n` +
+                          `❌ *Confirmações PUT:* ${MIN_PUT_CONFIRMATIONS}\n` +
+                          `🕯️ *Candles por TF:* ${CANDLE_COUNT}\n\n` +
+                          `📡 *Deriv:* ${derivClient.connected ? '✅ Conectado' : '❌ Desconectado'}`;
+            
+            telegramBot.sendMessage(msg.chat.id, config, { parse_mode: 'Markdown' });
+        });
+        
+        // Comando /status
+        telegramBot.onText(/\/status/, (msg) => {
+            const status = `📡 *STATUS DO SISTEMA*\n\n` +
+                          `🔌 Deriv: ${derivClient.connected ? '✅ Conectado' : '❌ Desconectado'}\n` +
+                          `🤖 Telegram: ✅ Ativo\n` +
+                          `🕒 Server: ${new Date().toLocaleString('pt-BR')}\n` +
+                          `📊 Modo: ${TRADING_MODE}`;
+            
+            telegramBot.sendMessage(msg.chat.id, status, { parse_mode: 'Markdown' });
+        });
+        
+        // Handler para mensagens não reconhecidas
+        telegramBot.on('message', (msg) => {
+            if (!msg.text?.startsWith('/')) return; // Ignora mensagens sem comando
+            
+            const chatId = msg.chat.id;
+            telegramBot.sendMessage(
+                chatId,
+                `❓ Comando não reconhecido. Digite /help para ver os comandos disponíveis.`
+            );
+        });
+        
+        // Handler de erros do polling
+        telegramBot.on('polling_error', (error) => {
+            console.error('Erro no polling do Telegram:', error.message);
+        });
+        
+        console.log('✅ Comandos do Telegram registrados com sucesso!');
+        
+    } catch (error) {
+        console.error('❌ Erro ao iniciar bot Telegram:', error.message);
     }
-
-    return mensagem;
+} else {
+    console.warn('⚠️ TELEGRAM_TOKEN não definido. Bot Telegram não iniciado.');
 }
-
 // ========== LISTA DE SÍMBOLOS (ATIVOS) SUPORTADOS ==========
 const SYMBOLS = [
     { symbol: 'R_10', description: 'Volatility 10 Index' },
